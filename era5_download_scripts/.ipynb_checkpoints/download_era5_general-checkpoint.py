@@ -1,0 +1,71 @@
+import cdsapi
+import argparse
+import calendar
+import datetime
+
+
+c = cdsapi.Client()
+
+
+
+monthDict = {1:'Jan', 2:'Feb', 3:'Mar', 4:'Apr', 5:'May', 6:'Jun',
+            7:'Jul', 8:'Aug', 9:'Sep', 10:'Oct', 11:'Nov', 12:'Dec'}
+
+
+
+parser = argparse.ArgumentParser(description='Get ERA5 3D Data.')
+parser.add_argument('--year', type = int)
+parser.add_argument('--month', type = int)
+parser.add_argument('--fields', type = list)
+parser.add_argument('--output_dir', type = str, default = '/export/data1/cchristo/era5/')
+
+args = parser.parse_args()
+
+num_days = calendar.monthrange(args.year, args.month)[1]
+days = [str(datetime.date(args.year, args.month, day).day) for day in range(1, num_days+1)]
+
+fname = monthDict[args.month] + '_' + str(args.year) + '.nc'
+
+print("Downloading", args.month, args.year)
+print("Days:",days)
+print("As file:", fname)
+
+c.retrieve(
+    'reanalysis-era5-pressure-levels',
+    {
+        'product_type': 'reanalysis',
+        'format': 'netcdf',
+        'variable': args.fields,
+        'pressure_level': [
+            '1', '2', '3',
+            '5', '7', '10',
+            '20', '30', '50',
+            '70', '100', '125',
+            '150', '175', '200',
+            '225', '250', '300',
+            '350', '400', '450',
+            '500', '550', '600',
+            '650', '700', '750',
+            '775', '800', '825',
+            '850', '875', '900',
+            '925', '950', '975',
+            '1000',
+        ],
+        'year': str(args.year),
+        'month': str(args.month),
+        'day': days,
+        'time': [
+            '00:00', '01:00', '02:00',
+            '03:00', '04:00', '05:00',
+            '06:00', '07:00', '08:00',
+            '09:00', '10:00', '11:00',
+            '12:00', '13:00', '14:00',
+            '15:00', '16:00', '17:00',
+            '18:00', '19:00', '20:00',
+            '21:00', '22:00', '23:00',
+        ],
+    },
+     args.output_dir + fname)
+
+
+
