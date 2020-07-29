@@ -30,9 +30,9 @@ Na = 6.0221415e23
 
 # Some constants and the planck function (as radiance!)
 pi = np.pi
-h = 6.626e-34
-c = 299792458
-k = 1.38e-23
+h = 6.62607004e-34 # m^2/kg/s
+c = 299792458 # m/s
+k = 1.380649e-23 # J/K
 
 ###### Helper function for fundamental equations
 def planck(wav, T):
@@ -41,7 +41,14 @@ def planck(wav, T):
     intensity = c1/ ( (wav**5)*(np.exp(c2) - 1.0) )
     # Convert to W/sr/m^2/µm here directly (it was W/sr/m^2/m)
     return intensity*1.e-6
+#     return intensity*1.e-2
 
+def planck_wavenumber(wavenum, T):
+    c1 = 2.0*h*(c**2)*(wavenum**3)
+    c2 = (h*c*wavenum)/(k*T)
+    intensity = c1/(np.exp(c2) - 1.0)
+    return intensity
+#     return (c1, c2, intensity)
 ###### Helper function for calculating profile properties
 def compute_profile_properties_merra2(ds, verbose=True):
     ''' Given single profile from merra2 meteorlogical reanalysis, compute pressure levels, VMR 
@@ -114,8 +121,8 @@ def create_cross_section_matrix_hapi(p_prof, T_prof, xmin, xmax, time_i=None, ou
         cs_matrix_ds['time'] = time_i
     cs_matrix_ds = cs_matrix_ds.assign_coords(time = cs_matrix_ds['time'])
 
-    
-    cs_matrix_ds.to_netcdf(output_path)
+    if output_path:
+        cs_matrix_ds.to_netcdf(output_path)
     return cs_matrix_ds
 
 ######## Functions for performing RT calculations
