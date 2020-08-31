@@ -16,6 +16,8 @@ function get_cross_section_matrix(hitran, ν_grid, p_grid, t_grid)
                                                                 collect(ν_grid), 
                                                                 p_grid[i], 
                                                                 t_grid[i])
-            return cs_matrix
     end
+
+    return cs_matrix
+    
 end
