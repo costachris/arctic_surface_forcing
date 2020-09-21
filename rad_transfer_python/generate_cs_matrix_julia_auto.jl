@@ -30,7 +30,7 @@ ds = Dataset(profile_ts_file_path) ;
 
 
 
-for time_i in 1260:length(ds["time"])
+for time_i in 1:length(ds["time"])
     
     T = ds["T"][:,time_i]
     P = ds["PL"][:,time_i]

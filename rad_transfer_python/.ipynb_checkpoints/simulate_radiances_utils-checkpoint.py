@@ -205,11 +205,11 @@ def plot_emission_height(wl_nm, tau_wl, T_prof, p_prof, label,
     plt.plot(wl_nm, tau_wl, label = label)
     
     plt.grid()
-    plt.gca().set_yscale('log')
-    plt.gca().invert_yaxis()
+#     plt.gca().set_yscale('log')
+#     plt.gca().invert_yaxis()
 
     plt.xlabel(r'Wavelength $\mu m$')
-    plt.ylabel(r'$\tau = 1$ pressure [Pa]')
+    plt.ylabel(r'$\tau = 1$ Height [m]')
     plt.legend()
     if ylim:
 #         plt.ylim([p_full.max(), 4*10**4])
@@ -221,9 +221,9 @@ def plot_emission_height(wl_nm, tau_wl, T_prof, p_prof, label,
         plt.xlim([wl_nm.min(), wl_nm.max()])
     plt.subplot(122) #, sharey = ax0)
 
-    plt.plot(T_prof, p_prof)
-    plt.gca().set_yscale('log')
-    plt.gca().invert_yaxis()
+    plt.plot(T_prof, p_prof, '.-')
+#     plt.gca().set_yscale('log')
+#     plt.gca().invert_yaxis()
     if ave_emmission_pres:
         plt.axhline(y = ave_emmission_pres, color = 'r', linestyle = '--')
     if ylim:

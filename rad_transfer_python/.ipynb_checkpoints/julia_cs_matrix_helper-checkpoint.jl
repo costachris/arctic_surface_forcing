@@ -22,7 +22,7 @@ function get_cross_section_matrix(hitran, ν_grid, p_grid, t_grid)
                                                                 p_grid[i], 
                                                                 t_grid[i],
                                                                 CEF=HumlicekWeidemann32SDErrorFunction(),
-                                                                wing_cutoff = 100,
+                                                                wing_cutoff = 300,
                                                                 architecture=Architectures.GPU())
     end
 
