@@ -167,23 +167,50 @@ def compute_downwelling_radiation(cs_matrix_co2,
 
 ####### Plotting functions
 
-def plot_profile(pres, temp,
+def plot_profile(v_coord, temp,
+                 v_coord_type = 'pressure',
+                 plot_kind = 'line',
                  min_pres = 10, xlabel = "Temperature [C]", newfig_bool = True,
                  xlim = None,
                  label = None, rotation = 0):
-    '''Given xr.dataset of single profile, plot vertical profile w/ log(p)'''
+    '''Given xr.dataset of single profile, plot vertical profile w/ log(p)
+    
+    Args
+    -------
+        v_coord - array-like
+            vertical coordinate
+        v_coord_type - str {'pressure', 'height'}
+            Use pressure or height as vertical coordinate
+        plot_kind - str {'line', 'scatter'}
+            Kind of plot to use.
+    
+    Returns
+    --------
+        plt.axis
+    
+    '''
 
     
     if newfig_bool:
         plt.figure(figsize = (6,6))
-    plt.plot(temp, pres, linewidth = 2, label = label)
+    if plot_kind == 'line':
+        plt.plot(temp, v_coord, linewidth = 2, label = label)
+    elif plot_kind == 'scatter':
+        plt.scatter(temp, v_coord, label = label)
     
-    plt.gca().invert_yaxis()
-    plt.ylim([pres.max(), min_pres])
-    plt.gca().set_yscale('log')
+    if v_coord_type == 'pressure':
+        plt.gca().invert_yaxis()
+        plt.ylim([np.nanmax(v_coord), min_pres])
+        plt.gca().set_yscale('log')
+        plt.ylabel("Pressure [Pa]")
+    elif v_coord_type == 'height':
+        plt.ylim([np.nanmin(v_coord), np.nanmax(v_coord)])
+        plt.ylabel("Height [m]")
+        
+            
     plt.grid()
     plt.xlabel(xlabel)
-    plt.ylabel("Pressure [Pa]")
+   
     if xlim: 
         plt.xlim(xlim)
     if rotation != 0: 
@@ -208,7 +235,7 @@ def plot_emission_height(wl_nm, tau_wl, T_prof, p_prof, label,
 #     plt.gca().set_yscale('log')
 #     plt.gca().invert_yaxis()
 
-    plt.xlabel(r'Wavelength $\mu m$')
+    plt.xlabel(r'Wavenumber $[cm^{-1}]$')
     plt.ylabel(r'$\tau = 1$ Height [m]')
     plt.legend()
     if ylim:
