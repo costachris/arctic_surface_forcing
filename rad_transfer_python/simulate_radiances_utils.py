@@ -135,35 +135,63 @@ def compute_downwelling_radiation(cs_matrix_co2,
                                   VCD_dry_prof, 
                                   vmr_h2o_prof,
                                   nu,
+                                  CO2_mr = 400.e-6, 
+                                  CH4_mr = 1.8e-6,
                                   AMF=1):
-    '''Compute downwelling R matrix from cross-section matrix. '''
-    NLEV = cs_matrix_co2.shape[1]
-    # Compute transmission for each layer:
-#     T = np.zeros((len(nu_),NLEV))
-#     T = np.zeros(cs_matrix_co2.shape)
-    # Generate matrices of optical thickness per layer now for each gas: 
-    tau_co2 = cs_matrix_co2*VCD_dry_prof*400.e-6*AMF 
-    tau_h2o = cs_matrix_h2o*VCD_dry_prof*vmr_h2o_prof*AMF 
-    tau_ch4 = cs_matrix_ch4*VCD_dry_prof*1.8e-6*AMF 
+    '''Compute downwelling radiation from an atmosphere containing 
+    3 greenhouse gasses (CO2, CH4, and water vapor).
     
+    CO2 and CH4 are assumed to be well-mixed, whereas the vmr of water vapor
+    can vary. 
+    
+    '''
+    NLEV = cs_matrix_co2.shape[1]
+
+    # Generate matrices of optical thickness per layer now for each gas: 
+    tau_co2 = cs_matrix_co2*VCD_dry_prof*CO2_mr*AMF 
+    tau_h2o = cs_matrix_h2o*VCD_dry_prof*vmr_h2o_prof*AMF 
+    tau_ch4 = cs_matrix_ch4*VCD_dry_prof*CH4_mr*AMF 
+    
+    # total transmission
     T = np.exp(-tau_co2)*np.exp(-tau_h2o)*np.exp(-tau_ch4)
     
+    # component-by-component transmission 
+    T_CO2 = np.exp(-tau_co2)
+    T_H2O = np.exp(-tau_h2o)
+    T_CH4 = np.exp(-tau_ch4)
     
     # Generate Planck curve per layer + surface:
     wl_nu = 1.e7/nu*1.e-9
+    wavenum_m = nu*1e2
     # Use skin temperature of 300K
 #     B = np.zeros((len(nu_),NLEV))
 
-    B = np.zeros(cs_matrix_co2.shape)
+    B = np.zeros(T.shape)
     for i in range(NLEV):
-        B[:,i] = planck(wl_nu,T_prof[i])
-        
+        B[:,i] = planck_wavenumber(wavenum_m,T_prof[i])*1e2
+    
+    # compute downwelling IR radiation 
     Rdown = np.zeros(cs_matrix_co2.shape)
+    Rdown_CO2 = np.empty_like(Rdown)
+    Rdown_CH4 = np.empty_like(Rdown)
+    Rdown_H2O = np.empty_like(Rdown)
+
+
 
     for i in range(NLEV):
         Rdown[:,i] = B[:,i]*(1-T[:,i])*np.prod(T[:,i+1:],axis=1)
+        # component-by-component
+        Rdown_CO2[:,i] = B[:,i]*(1-T_CO2[:,i])*np.prod(T_CO2[:,i+1:],axis=1)
+        Rdown_CH4[:,i] = B[:,i]*(1-T_CH4[:,i])*np.prod(T_CH4[:,i+1:],axis=1)
+        Rdown_H2O[:,i] = B[:,i]*(1-T_H2O[:,i])*np.prod(T_H2O[:,i+1:],axis=1)
     
-    return (Rdown, T)
+    Surface_Down = np.sum(Rdown,axis=1)
+
+    Surface_Down_CO2 = np.sum(Rdown_CO2,axis=1)
+    Surface_Down_CH4 = np.sum(Rdown_CH4,axis=1)
+    Surface_Down_H2O = np.sum(Rdown_H2O,axis=1)
+        
+    return (Surface_Down_CO2, Surface_Down_CH4, Surface_Down_H2O, Surface_Down)
 
 ####### Plotting functions
 
