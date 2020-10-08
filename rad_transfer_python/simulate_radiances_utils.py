@@ -50,6 +50,18 @@ def planck_wavenumber(wavenum, T):
     intensity = c1/(np.exp(c2) - 1.0)
     return intensity
 #     return (c1, c2, intensity)
+
+
+def compute_rf_from_diff_spec(rad_diff,
+                              nu):
+    '''Given difference of spectra in 
+    W*m^-2*sr^-1*cm^-1, compute radiative forcing
+    W/m^2'''
+    
+    integral_rad_diff = np.trapz(rad_diff, x = nu)
+    # factor of pi comes from integrating over half sphere
+    return integral_rad_diff * np.pi
+    
 ###### Helper function for calculating profile properties
 def compute_profile_properties_merra2(ds, verbose=True):
     ''' Given single profile from merra2 meteorlogical reanalysis, compute pressure levels, VMR 
