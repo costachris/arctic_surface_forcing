@@ -35,6 +35,10 @@ h = 6.62607004e-34 # m^2/kg/s
 c = 299792458 # m/s
 k = 1.380649e-23 # J/K
 
+
+## Define conversion factors 
+W_M_MW_CM = 1e2*1e3
+
 ###### Helper function for fundamental equations
 def planck(wav, T):
     c1 = 2.0*h*c**2
@@ -61,7 +65,16 @@ def compute_rf_from_diff_spec(rad_diff,
     integral_rad_diff = np.trapz(rad_diff, x = nu)
     # factor of pi comes from integrating over half sphere
     return integral_rad_diff * np.pi
+
+
+
+def compute_mean_rad_800_band(rad_array, nu):
+    '''Compute mean radiance in 790 - 810 cm band.'''
     
+    nu_inds = np.where((nu > 790.0) & (nu < 810.0))
+    return np.nanmean(rad_array[nu_inds])
+
+
 ###### Helper function for calculating profile properties
 def compute_profile_properties_merra2(ds, verbose=True):
     ''' Given single profile from merra2 meteorlogical reanalysis, compute pressure levels, VMR 
@@ -458,3 +471,34 @@ def plot_emission_height(wl_nm,
     if ylim:
         plt.ylim(ylim)        
     plt.grid()
+    
+    
+def plot_downwelling_rad(Down_CO2, 
+                         Down_CH4, 
+                         Down_H2O, 
+                         nu,
+                         xlims = (500, 1800),
+                         figsize = (12,7)):
+    plt.figure(figsize = figsize)
+    plt.plot(nu, 1e3*Down_CO2,label='Rdown CO2', alpha=0.7 ,linewidth = 0.5)
+    plt.plot(nu, 1e3*Down_CH4,label='Rdown CH4', alpha=0.7 ,linewidth = 0.5)
+    plt.plot(nu, 1e3*Down_H2O,label='Rdown H2O', alpha=0.7 ,linewidth = 0.5)
+    wl_nu = 1.e7/nu*1.e-9
+    wavenum_m = nu*1e2
+
+    plt.plot(nu, W_M_MW_CM*planck_wavenumber(wavenum_m,270),label='BB @ 270K',alpha=0.8)
+    plt.plot(nu,  W_M_MW_CM*planck_wavenumber(wavenum_m,260),label='BB @ 260K',alpha=0.8)
+    plt.plot(nu,  W_M_MW_CM*planck_wavenumber(wavenum_m,250),label='BB @ 250K',alpha=0.8)
+    plt.plot(nu,  W_M_MW_CM*planck_wavenumber(wavenum_m,240),label='BB @ 240K',alpha=0.8)
+    plt.plot(nu,  W_M_MW_CM*planck_wavenumber(wavenum_m,220),label='BB @ 220K',alpha=0.8)
+    plt.legend(loc=0)
+
+    # plt.xlim((491,1799))
+    if not xlims is None:
+        plt.xlim(xlims)
+    plt.xlabel('Wavenumber ($cm^{-1}$)')
+    plt.ylabel(r'Downwelling Radiance ($mW m^{-2} sr^{-1} cm^{-1}$)')
+    # plt.xlim((4,30))
+    plt.title('Downwelling Thermal Radiance in Nadir at surface')
+    plt.grid()
+    # plt.savefig('figs/christian_update_9_14/Rdown_gas_components_zoom.png', dpi = 300)
