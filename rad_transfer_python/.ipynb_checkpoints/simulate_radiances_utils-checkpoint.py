@@ -68,6 +68,19 @@ def compute_rf_from_diff_spec(rad_diff,
 
 
 
+def _filter_k_range_to_aeri(rad_array, nu):
+    '''Filter array of radiances to lie with wavenumber
+    range of instrument. 
+    
+    Args
+    -----
+    rad_array - np.array
+    
+    nu - np.array
+    '''
+    nu_inds = np.where((nu > 491.79016) & (nu < 1799.8556))
+    return (rad_array[nu_inds], nu[nu_inds])
+
 def compute_mean_rad_800_band(rad_array, nu):
     '''Compute mean radiance in 790 - 810 cm band.'''
     
