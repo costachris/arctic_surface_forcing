@@ -70,9 +70,9 @@ input_cs_matrix_path_format = input_cs_matrix_rel_path + '{year}/cs_matrix_{year
 
 
 # output data rel dir 
-# output_data_rel_dir_top = '/net/fluo/data2/groupMembers/cchristo/results/rt_results/'
+output_data_rel_dir_top = '/net/fluo/data2/groupMembers/cchristo/results/rt_results/'
 # output_data_rel_dir_top = '/net/fluo/data2/groupMembers/cchristo/results/rt_results_preindus_CO2/'
-output_data_rel_dir_top = '/net/fluo/data2/groupMembers/cchristo/results/rt_results_preindus_CH4/'
+# output_data_rel_dir_top = '/net/fluo/data2/groupMembers/cchristo/results/rt_results_preindus_CH4/'
 
 
 
@@ -139,9 +139,12 @@ out_data_path_format = '{year}/{month:02d}/surface_fields_{year}{month:02d}{day:
 
 CO2_mr = 395.e-6
 # CO2_mr = 280.e-6
-# CH4_mr = 1.89e-6
-CH4_mr = 0.722e-6
+CH4_mr = 1.89e-6
+# CH4_mr = 0.722e-6
 AMF = 1.0
+
+print('Running for: CO2 mr:', CO2_mr, 'CH4_mr', CH4_mr)
+print('Saving to results to :', output_data_rel_dir_top)
 
 
 # ## Open summit profilesm
@@ -425,7 +428,7 @@ Parallel(n_jobs=25)(delayed(process_time_parallel)(time_i) for time_i in all_tim
 
 # # sanity checks
 
-# In[161]:
+# In[17]:
 
 
 plt.plot(1e3*Surface_Down)
