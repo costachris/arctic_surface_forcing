@@ -55,6 +55,16 @@ def planck_wavenumber(wavenum, T):
     return intensity
 #     return (c1, c2, intensity)
 
+def compute_rf_from_diff_spec_ds(rad_diff, nu):
+    '''Given difference of spectra in 
+    W*m^-2*sr^-1*cm^-1, compute radiative forcing
+    W/m^2'''
+#     rad_diff = ds['lw_down_total']
+#     nu = ds['nu']
+    
+    integral_rad_diff = np.trapz(rad_diff, x = nu)
+    # factor of pi comes from integrating over half sphere
+    return integral_rad_diff * np.pi
 
 def compute_rf_from_diff_spec(rad_diff,
                               nu):
@@ -78,7 +88,8 @@ def _filter_k_range_to_aeri(rad_array, nu):
     
     nu - np.array
     '''
-    nu_inds = np.where((nu > 491.79016) & (nu < 1799.8556))
+    nu_inds = np.where((nu > 491.79016) & 
+                       (nu < 1799.8556))
     return (rad_array[nu_inds], nu[nu_inds])
 
 def compute_mean_rad_800_band(rad_array, nu):

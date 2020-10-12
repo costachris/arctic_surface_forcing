@@ -36,8 +36,12 @@ path_to_cloud_mask = '/net/fluo/data2/groupMembers/cchristo/misc_data/cloud_bool
 # rel_dir_to_all_surface_spec = '/net/fluo/data2/groupMembers/cchristo/results/rt_results/'
 # output_rel_dir_to_all_surface_spec = '/net/fluo/data2/groupMembers/cchristo/results/rt_results_monthly/'
 
-rel_dir_to_all_surface_spec = '/net/fluo/data2/groupMembers/cchristo/results/rt_results_preindus_CO2/'
-output_rel_dir_to_all_surface_spec = '/net/fluo/data2/groupMembers/cchristo/results/rt_results_preindus_CO2_monthly/'
+# rel_dir_to_all_surface_spec = '/net/fluo/data2/groupMembers/cchristo/results/rt_results_preindus_CO2/'
+# output_rel_dir_to_all_surface_spec = '/net/fluo/data2/groupMembers/cchristo/results/rt_results_preindus_CO2_monthly/'
+
+rel_dir_to_all_surface_spec = '/net/fluo/data2/groupMembers/cchristo/results/rt_results_preindus_CH4/'
+output_rel_dir_to_all_surface_spec = '/net/fluo/data2/groupMembers/cchristo/results/rt_results_preindus_CH4_monthly/'
+
 
 
 rel_dir_format = '{year}/{month:02d}/'
@@ -67,46 +71,7 @@ cloud_mask_ds = xr.open_dataset(path_to_cloud_mask)
 # In[ ]:
 
 
-def process_time_parallel(time_i):
-    print(time_i)
-    out_fpath = output_rel_dir_to_all_surface_spec + 'surface_fields_{year}{month:02d}.nc'.format(year = time_i.year,
-                                                         month = time_i.month)
-    if not os.path.exists(out_fpath):
-        rel_dir = rel_dir_format.format(year = time_i.year, month = time_i.month)
-        file_names = os.listdir(rel_dir_to_all_surface_spec + rel_dir)
-        file_paths_i = [rel_dir_to_all_surface_spec + rel_dir + filename for filename in file_names]
-
-        # get cloud-free mask for month
-        cloud_mask_ds_i = cloud_mask_ds.sel(time = '{year}-{month:02d}'.format(year = time_i.year, 
-                                                        month = time_i.month))
-        # find only cloud-free times 
-        cloud_free_ds = cloud_mask_ds_i.where(cloud_mask_ds_i['cloud_free_bool'] == 1, drop = True)
-
-        # open surface spectrums for month 
-        ds_i = xr.open_mfdataset(file_paths_i, combine='by_coords')
-
-        # select and save only cloud_free times
-        ds_i_cloud_free = ds_i.sel(time = cloud_free_ds.time)
-
-        out_fpath = output_rel_dir_to_all_surface_spec + 'surface_fields_{year}{month:02d}.nc'.format(year = time_i.year,
-                                                             month = time_i.month)
-
-        ds_i_cloud_free.to_netcdf(out_fpath)
-
-
-# In[ ]:
-
-
-Parallel(n_jobs=20)(delayed(process_time_parallel)(time_i) for time_i in all_months)
-print('DONE!')
-
-
-# # Not parallel
-
-# In[7]:
-
-
-# for time_i in all_months:
+# def process_time_parallel(time_i):
 #     print(time_i)
 #     out_fpath = output_rel_dir_to_all_surface_spec + 'surface_fields_{year}{month:02d}.nc'.format(year = time_i.year,
 #                                                          month = time_i.month)
@@ -131,6 +96,48 @@ print('DONE!')
 #                                                              month = time_i.month)
 
 #         ds_i_cloud_free.to_netcdf(out_fpath)
+
+
+# In[ ]:
+
+
+# Parallel(n_jobs=20)(delayed(process_time_parallel)(time_i) for time_i in all_months)
+# print('DONE!')
+
+
+# # Not parallel
+
+# In[7]:
+
+
+for time_i in all_months:
+    try:
+        print(time_i)
+        out_fpath = output_rel_dir_to_all_surface_spec + 'surface_fields_{year}{month:02d}.nc'.format(year = time_i.year,
+                                                             month = time_i.month)
+        if not os.path.exists(out_fpath):
+            rel_dir = rel_dir_format.format(year = time_i.year, month = time_i.month)
+            file_names = os.listdir(rel_dir_to_all_surface_spec + rel_dir)
+            file_paths_i = [rel_dir_to_all_surface_spec + rel_dir + filename for filename in file_names]
+
+            # get cloud-free mask for month
+            cloud_mask_ds_i = cloud_mask_ds.sel(time = '{year}-{month:02d}'.format(year = time_i.year, 
+                                                            month = time_i.month))
+            # find only cloud-free times 
+            cloud_free_ds = cloud_mask_ds_i.where(cloud_mask_ds_i['cloud_free_bool'] == 1, drop = True)
+
+            # open surface spectrums for month 
+            ds_i = xr.open_mfdataset(file_paths_i, combine='by_coords')
+
+            # select and save only cloud_free times
+            ds_i_cloud_free = ds_i.sel(time = cloud_free_ds.time)
+
+            out_fpath = output_rel_dir_to_all_surface_spec + 'surface_fields_{year}{month:02d}.nc'.format(year = time_i.year,
+                                                                 month = time_i.month)
+
+            ds_i_cloud_free.to_netcdf(out_fpath)
+    except: 
+        print('Failed on ', time_i)
 
 
 # In[72]:
