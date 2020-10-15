@@ -49,12 +49,11 @@ def plot_forcing_spectral_residual(rad_diff,
                                    xlims = None,
                                    ylims = None,
                                    alpha = 0.9,
-                                   linewidth = 0.4,
-                                   figsize = (11,6)):
+                                   linewidth = 0.5,
+                                   figsize = (12,6)):
     
     '''Plot spectral residual in mW. '''
     
-    wavelength = 2*np.pi/nu
     fig = plt.figure(figsize = figsize)
     
     ax1 = fig.add_subplot(111)    

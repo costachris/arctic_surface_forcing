@@ -399,6 +399,9 @@ def plot_profile(v_coord, temp,
                  plot_kind = 'line',
                  min_pres = 10, xlabel = "Temperature [C]", newfig_bool = True,
                  xlim = None,
+                 ylim = None,
+                 linewidth = 10,
+                 figsize = (6,6),
                  label = None, rotation = 0):
     '''Given xr.dataset of single profile, plot vertical profile w/ log(p)
     
@@ -419,9 +422,9 @@ def plot_profile(v_coord, temp,
 
     
     if newfig_bool:
-        plt.figure(figsize = (6,6))
+        plt.figure(figsize = figsize)
     if plot_kind == 'line':
-        plt.plot(temp, v_coord, linewidth = 2, label = label)
+        plt.plot(temp, v_coord, linewidth = linewidth, label = label)
     elif plot_kind == 'scatter':
         plt.scatter(temp, v_coord, label = label)
     
@@ -432,14 +435,17 @@ def plot_profile(v_coord, temp,
         plt.ylabel("Pressure [Pa]")
     elif v_coord_type == 'height':
         plt.ylim([np.nanmin(v_coord), np.nanmax(v_coord)])
-        plt.ylabel("Height [m]")
+        plt.ylabel("Height [m]", weight = 'bold')
         
             
     plt.grid()
-    plt.xlabel(xlabel)
+    plt.xlabel(xlabel, weight = 'bold')
    
     if xlim: 
         plt.xlim(xlim)
+    if ylim: 
+        plt.ylim(ylim)
+        
     if rotation != 0: 
         plt.xticks(rotation=rotation)
 #     plt.locator_params(nbins=8)
@@ -503,26 +509,50 @@ def plot_downwelling_rad(Down_CO2,
                          nu,
                          xlims = (500, 1800),
                          figsize = (12,7)):
-    plt.figure(figsize = figsize)
-    plt.plot(nu, 1e3*Down_CO2,label='Rdown CO2', alpha=0.7 ,linewidth = 0.5)
-    plt.plot(nu, 1e3*Down_CH4,label='Rdown CH4', alpha=0.7 ,linewidth = 0.5)
-    plt.plot(nu, 1e3*Down_H2O,label='Rdown H2O', alpha=0.7 ,linewidth = 0.5)
+    fig = plt.figure(figsize = figsize)
+    ax1 = fig.add_subplot(111)    
+    ax2 = ax1.twiny()
+    
+    
+    ax1.plot(nu, 1e3*Down_CO2,label='R $CO_2$', alpha=0.7 ,linewidth = 0.5)
+    ax1.plot(nu, 1e3*Down_CH4,label='R $CH_4$', alpha=0.7 ,linewidth = 0.5)
+    ax1.plot(nu, 1e3*Down_H2O,label='R $H_{2}O$', alpha=0.7 ,linewidth = 0.5)
     wl_nu = 1.e7/nu*1.e-9
     wavenum_m = nu*1e2
 
-    plt.plot(nu, W_M_MW_CM*planck_wavenumber(wavenum_m,270),label='BB @ 270K',alpha=0.8)
-    plt.plot(nu,  W_M_MW_CM*planck_wavenumber(wavenum_m,260),label='BB @ 260K',alpha=0.8)
-    plt.plot(nu,  W_M_MW_CM*planck_wavenumber(wavenum_m,250),label='BB @ 250K',alpha=0.8)
-    plt.plot(nu,  W_M_MW_CM*planck_wavenumber(wavenum_m,240),label='BB @ 240K',alpha=0.8)
-    plt.plot(nu,  W_M_MW_CM*planck_wavenumber(wavenum_m,220),label='BB @ 220K',alpha=0.8)
+    ax1.plot(nu,  W_M_MW_CM*planck_wavenumber(wavenum_m,244),label='BB @ 244K',alpha=0.8)
+    
+    ax1.plot(nu,  W_M_MW_CM*planck_wavenumber(wavenum_m,249),label='BB @ 249K',alpha=0.8)
+
+    ax1.plot(nu,  W_M_MW_CM*planck_wavenumber(wavenum_m,230),label='BB @ 230K',alpha=0.8)
+
+    
+    ax1.plot(nu,  W_M_MW_CM*planck_wavenumber(wavenum_m,214),label='BB @ 214K',alpha=0.8)
     plt.legend(loc=0)
+    
+    ax1.plot(nu,  W_M_MW_CM*planck_wavenumber(wavenum_m,200),label='BB @ 200K',alpha=0.8)
+    ax1.legend(loc=0)
 
     # plt.xlim((491,1799))
     if not xlims is None:
-        plt.xlim(xlims)
-    plt.xlabel('Wavenumber ($cm^{-1}$)')
-    plt.ylabel(r'Downwelling Radiance ($mW m^{-2} sr^{-1} cm^{-1}$)')
+        ax1.set_xlim(xlims)
+        
+    def tick_function(X):
+        wnum = (1/X)*1e4
+        return ["%.1f" % z for z in wnum]
+
+    ax1Ticks = ax1.get_xticks()
+    ax2Ticks = ax1Ticks
+    ax2.set_xticks(ax2Ticks)
+    ax2.set_xbound(ax1.get_xbound())
+    ax2.set_xlabel(r'Wavelength $[\mu m]$', 
+                   fontsize = 8,
+                   weight = 'bold')
+    ax2.set_xticklabels(tick_function(ax2Ticks))
+    
+    ax1.set_xlabel('Wavenumber ($cm^{-1}$)', weight = 'bold')
+    ax1.set_ylabel(r'Downwelling Radiance [$mW m^{-2} sr^{-1} cm^{-1}$]', weight = 'bold')
     # plt.xlim((4,30))
-    plt.title('Downwelling Thermal Radiance in Nadir at surface')
-    plt.grid()
+    ax1.set_title('Downwelling Thermal Radiance at Surface', weight = 'bold')
+    ax1.grid()
     # plt.savefig('figs/christian_update_9_14/Rdown_gas_components_zoom.png', dpi = 300)
