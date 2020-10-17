@@ -15,10 +15,15 @@ def _subset_k_to_instrument_grid(ds):
                  (ds.nu < 1799.8556 ),
                  drop = True)
 
+# def _curve_fit_monthly(month_index, meas):
 
+def sin_func_shift_day(t, A, phase, k, c):
+#     return A*np.sin(((2*np.pi/12) - phase)*t)
+    return A*np.sin(((2*np.pi/365))*t - phase) + k*t + c
 
-def sin_func(t, A, phase):
-    return A*np.sin(((2*np.pi/12) - phase)*t)
+def sin_func_shift(t, A, phase, k, c):
+#     return A*np.sin(((2*np.pi/12) - phase)*t)
+    return A*np.sin(((2*np.pi/12))*t - phase) + k*t + c
 
 def weighted_emission_height(da_weight, 
                              da_emission_height,):
