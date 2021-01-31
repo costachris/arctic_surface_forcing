@@ -34,7 +34,7 @@ pi = np.pi
 h = 6.62607004e-34 # m^2/kg/s
 c = 299792458 # m/s
 k = 1.380649e-23 # J/K
-
+stefan_boltzmann_c = 5.670374419*(10**-8)
 
 ## Define conversion factors 
 W_M_MW_CM = 1e2*1e3
@@ -54,6 +54,9 @@ def planck_wavenumber(wavenum, T):
     intensity = c1/(np.exp(c2) - 1.0)
     return intensity
 #     return (c1, c2, intensity)
+
+def stefan_boltzmann(T):
+    return stefan_boltzmann_c*(T**4)
 
 def compute_rf_from_diff_spec_ds(rad_diff, nu):
     '''Given difference of spectra in 
