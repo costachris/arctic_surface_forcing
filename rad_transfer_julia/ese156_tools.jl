@@ -165,6 +165,30 @@ function read_atmos_profile(file::String, lat::Real, lon::Real, timeIndex; g₀=
     return AtmosphericProfile(lat, lon, psurf, T, q, p_full, p_half, vmr_h2o, vcd_dry, vcd_h2o)
 end;
 
+
+"Computes cross section matrix for arbitrary number of absorbers"
+function compute_profile_crossSections_interp(profile::AtmosphericProfile, hitranModels::Array{HitranModel}, ν::AbstractRange{<:Real})
+    nGases   = length(hitranModels)
+    nProfile = length(profile.p)
+    FT = eltype(profile.T)
+    n_layers = length(profile.T)
+
+#     σ_matrix = zeros(FT, (length(ν), n_layers, nGases))
+    σ_matrix = zeros(FT, (length(ν), n_layers, nGases))
+    @showprogress for i = 1:n_layers
+        p_ = profile.p[i] / 100 # in hPa
+        T_ = profile.T[i]
+        for j = 1:nGases
+            σ_matrix[:,i,j] = Array(absorption_cross_section(hitranModels[j], 
+                                                       ν,
+                                                       p_,
+                                                       T_))
+        end
+    end
+    return σ_matrix
+end;
+
+
 "Computes cross section matrix for arbitrary number of absorbers"
 function compute_profile_crossSections(profile::AtmosphericProfile, hitranModels::Array{HitranModel}, ν::AbstractRange{<:Real})
     nGases   = length(hitranModels)
