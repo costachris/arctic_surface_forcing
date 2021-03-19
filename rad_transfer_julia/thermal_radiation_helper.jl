@@ -13,6 +13,8 @@ using CSV
 using DelimitedFiles
 using ForwardDiff, DiffResults
 
+using NumericalIntegration
+
 # using RadiativeTransfer
 # using RadiativeTransfer.Architectures
 
@@ -53,6 +55,176 @@ end;
     ν_out::Array
 end;
 
+
+function planck(wavenum, T)
+    wavenum_m = wavenum*1.0e2
+    h = 6.62607004e-34 # m^2/kg/s
+    c = 299792458 # m/s
+    k = 1.380649e-23 # J/K
+    c1 = 2.0*h*(c^2)*(wavenum_m^3)
+    c2 = (h*c*wavenum_m)/(k*T)
+    intensity = c1/(exp(c2) - 1.0)
+    return intensity*1.0e2
+end
+
+
+
+function loop_over_array(file, 
+                         lat_array, 
+                         lon_array,
+                         timeIndex,
+                         hitran_array_interp)
+    
+    global profile_filt
+    profile_filt = zeros(1,2); 
+    rf_down_array = zeros(size(lat_array)[1], size(lon_array)[1])
+    display(size(rf_down_array))
+    for lat_ii = 1:length(lat_array)
+        for lon_ii = 1:length(lon_array)
+            
+            lat = lat_array[lat_ii]
+            lon = lon_array[lon_ii]
+            
+            display(lat)
+            
+            profile = read_atmos_profile_new(file, lat, lon, timeIndex);
+
+            p_array = profile.p
+            p_filt_inds = findall(p_array -> (p_array > 15000), p_array)
+
+            profile_filt = AtmosphericProfile(profile.lat, 
+                                              profile.lon, 
+                                              profile.psurf, 
+                                              profile.T[p_filt_inds], 
+                                              profile.q[p_filt_inds], 
+                                              profile.p[p_filt_inds], 
+                                              profile.p_levels[p_filt_inds], 
+                                              profile.vmr_h2o[p_filt_inds], 
+                                              profile.vcd_dry[p_filt_inds], 
+                                              profile.vcd_h2o[p_filt_inds])
+
+
+            # Minimum wavenumber
+            ν_min  = 491.0
+            # Maximum wavenumber
+            ν_max = 1799.0
+
+            # define grid
+            res = 0.01
+            ν = ν_min:res:ν_max
+
+            σ_matrix = compute_profile_crossSections_interp(profile_filt, hitran_array_interp , ν);
+
+
+            # Define concentration profile:
+            nL = length(profile_filt.T)
+            vmr_co2 = zeros(nL) .+ 400e-6
+            vmr_co2_pre = zeros(nL) .+ 270e-6
+            vmr_ch4 = zeros(nL) .+ 2e-6
+            vmr_h2o = profile_filt.vmr_h2o
+            vmrs_pre = [vmr_co2_pre, vmr_h2o, vmr_ch4 ];
+
+            vmrs = [vmr_co2, vmr_h2o, vmr_ch4 ];
+
+
+            σ_matrix_red_cu = CuArray(σ_matrix);
+
+            T, rad_down_pre, rad_up = forward_model_thermal_gpu(vmrs_pre,
+                                                             σ_matrix_red_cu,
+                                                             profile_filt,
+                                                             0.05, 280.0, 1.0, ν);
+
+            T, rad_down_today, rad_up = forward_model_thermal_gpu(vmrs,
+                                                             σ_matrix_red_cu,
+                                                             profile_filt,
+                                                             0.05, 280.0, 1.0, ν);
+
+
+            diff = Array((rad_down_today[:,end] .- rad_down_pre[:,end]));
+            sus = NumericalIntegration.integrate(ν, diff)
+            display(sus)
+            rf_down_array[lat_ii, lon_ii] = sus[1]
+            
+            
+        end
+    end
+    
+    return rf_down_array
+end
+
+
+function compute_profile_properties_merra(T::Array, 
+                                          q::Array,
+                                          plocal::Array, 
+                                          psurf::Array, 
+                                          delp::Array)
+   """Given profile, compute profile properties and return AtmosphericProfile object"""
+    Na = 6.0221415e23;
+    # Dry and wet mass
+    dryMass = 28.9647e-3  / Na  # in kg/molec, weighted average for N2 and O2
+    wetMass = 18.01528e-3 / Na  # just H2O
+    ratio = dryMass / wetMass 
+    
+    Rd = 287.04 # specific gas constant for dry air
+    R_universal = 8.314472
+    go = 9.8196 #(m/s**2) 
+    
+    n_layers = length(T)
+    # also get a VMR vector of H2O (volumetric!)
+    vmr_h2o = zeros(FT, n_layers, )
+    vcd_dry = zeros(FT, n_layers, )
+    vcd_h2o = zeros(FT, n_layers, )
+    #################################################################
+    
+    dz = (delp./plocal).*(Rd.*T.*(1 .+ 0.608*q))./go
+    
+    rho_N = (plocal .* (1 .- q .* ratio)) ./ (R_universal .* T) .* (Na/10000.0)
+    rho_N_h2o = (plocal .* (q .* ratio)) ./ (R_universal .* T) .* (Na/10000.0)
+    
+    vmr_h2o = q .* ratio
+    vcd_dry = dz .* rho_N
+    
+    # Total column density of water vapor:
+#     display(sum(dz.*rho_N_h2o))
+    
+    return AtmosphericProfile(NaN, NaN, psurf, T, q, plocal, plocal, vmr_h2o, vcd_dry, vcd_h2o)
+end;
+    
+
+function subset_variables_merra(ds::NCDataset, 
+                                lat::Real,
+                                lon::Real,
+                                timeIndex)
+    
+    
+    # get nearest lat/lon index
+    lat_   = ds["lat"][:]
+    lon_   = ds["lon"][:]
+    
+    FT = eltype(lat_)
+    lat = FT(lat)
+    lon = FT(lon)
+    
+    # Find index (nearest neighbor, one could envision interpolation in space and time!):
+    iLat = argmin(abs.(lat_ .- lat))
+    iLon = argmin(abs.(lon_ .- lon))
+    
+    # Temperature profile
+    T    = convert(Array, ds["T"][:,:,:, timeIndex])
+    # specific humidity profile
+    q    = convert(Array, ds["QV"][:,:,:, timeIndex])
+
+    # 3d pressure
+    plocal = convert(Array, ds["PL"][:,:,:, timeIndex])
+    
+    # delta pressure 
+    delp = convert(Array, ds["DELP"][:,:,:, timeIndex])
+    
+    # Surafce pressure
+    psurf = convert(Array, ds["PS"][:,:,timeIndex])
+    
+    return (T, q, plocal, delp, psurf)
+end
 
 
 function read_atmos_profile_new(file::String, lat::Real, lon::Real, timeIndex; g₀=9.8196)
@@ -121,13 +293,15 @@ function read_atmos_profile_new(file::String, lat::Real, lon::Real, timeIndex; g
 #     rho_N_h2o =  ds['PL'].values*(q_local*1.6068)/(R_universal*T_local)*Na/10000.0
     
 #     vmr_h2o = q_local*1.6068
-    rho_N = (plocal .* (1 .- q .* 1.6068)) ./ (R_universal .* T) .* (Na/10000.0)
-    rho_N_h2o = (plocal .* (q .* 1.6068)) ./ (R_universal .* T) .* (Na/10000.0)
+    rho_N = (plocal .* (1 .- q .* ratio)) ./ (R_universal .* T) .* (Na/10000.0)
+    rho_N_h2o = (plocal .* (q .* ratio)) ./ (R_universal .* T) .* (Na/10000.0)
     
-    vmr_h2o = q .* 1.6068
+    vmr_h2o = q .* ratio
     vcd_dry = dz .* rho_N
     
-
+    # Total column density of water vapor:
+#     display(sum(dz.*rho_N_h2o))
+    
     return AtmosphericProfile(lat, lon, psurf, T, q, plocal, plocal, vmr_h2o, vcd_dry, vcd_h2o)
 end;
 
@@ -232,6 +406,59 @@ function compute_profile_crossSections_interp(profile::AtmosphericProfile, hitra
     end
     return σ_matrix
 end;
+
+
+
+function forward_model_thermal_gpu(vmrs, σ_matrix, profile, albedo, Tsurf, μ, ν)
+    nProfile = length(profile.T)
+    nSpec    = size(σ_matrix,1)
+    nGas     = length(vmrs)
+    
+    # wavelength in meter
+#     wl = CuArray((1e7*1e-9)./collect(ν))
+#     wl = CuArray((1e7*1e-9)./collect(ν)
+#     display(wl)
+    # Total sum of τ
+    ∑τ       = CuArray(zeros(nSpec,nProfile))
+#     ∑τ       = zeros(nSpec,nProfile)
+    
+    # Planck Source function
+    S        = CuArray(zeros(nSpec,nProfile))
+    
+    # Layer boundary up and down fluxes:
+    rad_down = CuArray(zeros(nSpec,nProfile+1))
+    rad_up   = CuArray(zeros(nSpec,nProfile+1))
+    
+    for i=1:nProfile
+        S[:,i] = planck.(ν, profile.T[i])
+    end
+    
+    # sum up total layer τ:
+    for i=1:nGas,j=1:nProfile
+        ∑τ[:,j] .+= σ_matrix[:,j,i] .* (vmrs[i][j] .* profile.vcd_dry[j])'
+    end
+    
+    
+    # Transmission per layer
+    T = exp.(-∑τ/μ)
+    
+    # Atmosphere from top to bottom:
+    for i=1:nProfile
+        rad_down[:,i+1] = rad_down[:,i].*T[:,i] .+ (1 .-T[:,i]).*S[:,i]
+    end
+#     display(rad_down)
+    # Upward flux at surface:
+    rad_up[:,end] = (1-albedo)*planck.(ν,Tsurf) .+ Array(rad_down[:,end])*albedo
+#     display("past")   
+    # Atmosphere from bottom to top
+    for i=nProfile:-1:1
+        rad_up[:,i] = rad_up[:,i+1].*T[:,i] .+ (1 .-T[:,i]) .* S[:,i]
+    end
+    
+    return T, rad_down, rad_up
+end
+
+
 
 
 "Computes cross section matrix for arbitrary number of absorbers"
