@@ -141,7 +141,7 @@ function loop_over_array(file,
 
 
             diff = Array((rad_down_today[:,end] .- rad_down_pre[:,end]));
-            sus = NumericalIntegration.integrate(ν, diff)
+            sus = NumericalIntegration.integrate(ν, diff) * 3.14159265358
             display(sus)
             rf_down_array[lat_ii, lon_ii] = sus[1]
             
@@ -238,8 +238,8 @@ function read_atmos_profile_new(file::String, lat::Real, lon::Real, timeIndex; g
 #     lat_   = ds["YDim"][:]
 #     lon_   = ds["XDim"][:]
     
-    lat_   = ds["lat"][:]
-    lon_   = ds["lon"][:]
+    lat_   = convert(Array{Float64}, ds["lat"][:])
+    lon_   = convert(Array{Float64}, ds["lon"][:])
     
     FT = eltype(lat_)
     lat = FT(lat)
